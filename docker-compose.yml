@@ -39,7 +39,7 @@ services:
   timeout: 5s
   retries: 5
   start_period: 5s
-    networks:
+  networks:
       - taskboard-network
     # Only expose port for debugging (optional)
     # ports:
