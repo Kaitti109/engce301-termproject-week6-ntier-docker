@@ -34,12 +34,12 @@ services:
       # Initialization scripts (run once on first start)
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost:3000/"]
-  interval: 10s
-  timeout: 5s
-  retries: 5
-  start_period: 5s
-  networks:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
       - taskboard-network
     # Only expose port for debugging (optional)
     # ports:
