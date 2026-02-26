@@ -1,20 +1,6 @@
 # ============================================
-# Docker Compose - N-Tier Architecture
-# ENGCE301 - Week 6 Docker Version
+# Docker Compose - N-Tier Architecture (Fixed)
 # ============================================
-# 
-# Services:
-# 1. db     - PostgreSQL Database
-# 2. api    - Node.js Backend API
-# 3. nginx  - Web Server & Reverse Proxy
-#
-# Usage:
-#   docker compose up -d      # Start all services
-#   docker compose down       # Stop all services
-#   docker compose logs -f    # View logs
-# ============================================
-
-
 
 services:
   # ============================================
@@ -29,20 +15,16 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-taskboard}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskboard123}
     volumes:
-      # Persistent data storage
       - postgres_data:/var/lib/postgresql/data
-      # Initialization scripts (run once on first start)
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskboard} -d ${POSTGRES_DB:-taskboard_db}"]
+      # ใช้ pg_isready เพราะอยู่ใน container postgres
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-taskboard} -d $${POSTGRES_DB:-taskboard_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - taskboard-network
-    # Only expose port for debugging (optional)
-    # ports:
-    #   - "5432:5432"
 
   # ============================================
   # API Service - Node.js Backend
@@ -66,16 +48,14 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      # ใช้ node ในการ fetch (เนื่องจาก image เป็น node-alpine)
+      test: ["CMD-SHELL", "node -e 'fetch(\"http://localhost:3000/api/health\").then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))'"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - taskboard-network
-    # Only expose port for debugging (optional)
-    # ports:
-    #   - "3000:3000"
 
   # ============================================
   # Nginx Service - Web Server & Reverse Proxy
@@ -88,18 +68,16 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Nginx configuration
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      # SSL certificates
       - ./nginx/ssl:/etc/nginx/ssl:ro
-      # Frontend static files
       - ./frontend:/usr/share/nginx/html:ro
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/api/health"]
+      # Nginx Alpine มักจะมี wget มาให้ หรือใช้การเช็ค port
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -107,16 +85,13 @@ services:
       - taskboard-network
 
 # ============================================
-# Networks
+# Networks & Volumes
 # ============================================
 networks:
   taskboard-network:
     driver: bridge
     name: taskboard-network
 
-# ============================================
-# Volumes
-# ============================================
 volumes:
   postgres_data:
     name: taskboard-postgres-data
